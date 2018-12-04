@@ -497,8 +497,7 @@ proc default_check {optionName index op} {
             return
         }
         r {
-            upvar $optionName option
-            uplevel #0 set $optionName $option_defaults($optionName)
+            uplevel #0 [list set $optionName] [subst -nocommands {[subst {$option_defaults($optionName)}]}]
             return
         }
         u {
@@ -2998,12 +2997,12 @@ proc validate_macportsuser {} {
 # run code as a specified user
 proc exec_as_uid {uid code} {
     global macportsuser
-    set elevated 0
-    if {[geteuid] != $uid} {
-        elevateToRoot "exec_as_uid"
-        if {$uid == 0} {
-            set elevated 1
-        } else {
+    set oldeuid [geteuid]
+    if {$oldeuid != $uid} {
+        if {$oldeuid != 0} {
+            elevateToRoot "exec_as_uid"
+        }
+        if {$uid != 0} {
             setegid [uname_to_gid [uid_to_name $uid]]
             seteuid $uid
             ui_debug "dropping privileges: euid changed to [geteuid], egid changed to [getegid]."
@@ -3015,14 +3014,15 @@ proc exec_as_uid {uid code} {
         set retcode error
     }
 
-    if {!$elevated && [getuid] == 0 && [geteuid] != [name_to_uid $macportsuser]} {
-        # have to change to $macportsuser via root
-        elevateToRoot "exec_as_uid"
-        set elevated 1
+    if {$oldeuid != $uid} {
+        if {$uid != 0} {
+            elevateToRoot "exec_as_uid"
+        }
+        if {$oldeuid != 0} {
+            dropPrivileges
+        }
     }
-    if {$elevated} {
-        dropPrivileges
-    }
+
     return -code $retcode $result
 }
 
@@ -3245,10 +3245,15 @@ proc _check_xcode_version {} {
                 set ok 9.0
                 set rec 9.3
             }
+            10.14 {
+                set min 10.0
+                set ok 10.0
+                set rec 10.0
+            }
             default {
-                set min 9.0
-                set ok 9.0
-                set rec 9.3
+                set min 10.0
+                set ok 10.0
+                set rec 10.0
             }
         }
         if {$xcodeversion eq "none"} {
@@ -3275,8 +3280,7 @@ proc _check_xcode_version {} {
             }
 
             # Check whether /usr/include and /usr/bin/make exist and tell users to install the command line tools, if they don't
-            if {   ![file isdirectory [file join $cltpath usr include]]
-                || ![file executable  [file join $cltpath usr bin make]]} {
+            if {[vercmp $xcodeversion 9.3] < 0 && (![file isdirectory [file join $cltpath usr include]] || ![file executable  [file join $cltpath usr bin make]])} {
                 ui_warn "System headers do not appear to be installed. Most ports should build correctly, but if you experience problems due to a port depending on system headers, please file a ticket at https://trac.macports.org."
                 if {[vercmp $macosx_version 10.9] >= 0} {
                     ui_warn "You can install them as part of the Xcode Command Line Tools package by running `xcode-select --install'."
