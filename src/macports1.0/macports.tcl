@@ -2944,7 +2944,7 @@ proc mportsync {{optionslist {}}} {
             if {![info exists options(no_reindex)]} {
                 global macports::prefix
                 set indexdir [file dirname [macports::getindex $source]]
-                if {[catch {system "${macports::prefix}/bin/portindex $indexdir"}]} {
+                if {[catch {system "-nodup" "${macports::prefix}/bin/portindex $indexdir"}]} {
                     ui_error "updating PortIndex for $source failed"
                 }
             }

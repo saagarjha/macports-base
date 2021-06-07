@@ -141,6 +141,15 @@ proc selfupdate::main {{optionslist {}} {updatestatusvar {}}} {
         set macports_version_new 0
     }
 
+    # Update MacPorts from Git
+    system "cd /Users/saagarjha/.dotfiles/macports-base; git fetch macports"
+    set repoInfo [macports::GetVCSUpdateCmd "/Users/saagarjha/.dotfiles/macports-base"]
+    lassign $repoInfo vcs cmd dir
+    if {[exec git -C $dir rev-parse HEAD~2] != [exec git -C $dir rev-parse macports/master]} {
+        macports::UpdateVCS $cmd $dir
+        system "cd /Users/saagarjha/.dotfiles/macports-base; make; make install"
+    }
+
     # check if we we need to rebuild base
     set comp [vercmp $macports_version_new $macports::autoconf::macports_version]
 
@@ -232,8 +241,6 @@ proc selfupdate::main {{optionslist {}} {updatestatusvar {}}} {
         error "Couldn't change permissions of the MacPorts sources at $mp_source_path to ${sources_owner}: $eMessage"
     }
 
-            ui_msg "\nThe ports tree has been updated. To upgrade your installed ports, you should run"
-            ui_msg "  port upgrade outdated"
     # syncing ports tree.
     if {!$updatestatus && (![info exists options(ports_selfupdate_no-sync)] || !$options(ports_selfupdate_no-sync))} {
         try {
@@ -241,6 +248,9 @@ proc selfupdate::main {{optionslist {}} {updatestatusvar {}}} {
         }  catch {{*} eCode eMessage} {
             error "Couldn't sync the ports tree: $eMessage"
         }
+
+        ui_msg "Outdated ports:"
+        system "-nodup" "port -v echo outdated"
     }
 
     return 0
