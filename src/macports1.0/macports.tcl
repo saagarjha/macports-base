@@ -3726,7 +3726,7 @@ proc mportsync {{options {}}} {
                 set group [file attributes $indexdir -group]
                 if {[catch {
                         macports::run_unprivileged {
-                            system -W ${portdbpath}/home "${prefix}/bin/portindex [macports::shellescape $indexdir]"
+                            system -W ${portdbpath}/home "-nodup" "${prefix}/bin/portindex [macports::shellescape $indexdir]"
                         } [list $owner $group]
                 }]} {
                     ui_error "updating PortIndex for $source failed"

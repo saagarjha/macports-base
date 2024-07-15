@@ -2528,9 +2528,8 @@ proc action_selfupdate { action portlist opts } {
         if {$length_outdated == 0} {
             ui_msg "All installed ports are up to date."
         } else {
-            ui_msg "\n$length_outdated [expr {$length_outdated == 1 ? "port is": "ports are"}] outdated. Run 'port outdated' for details."
-            ui_msg "To upgrade your installed ports, you should run"
-            ui_msg "  port upgrade outdated"
+            ui_msg "Outdated ports:"
+            system "-nodup" "port -v echo outdated"
         }
     }
 

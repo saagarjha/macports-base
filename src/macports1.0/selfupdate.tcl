@@ -569,6 +569,11 @@ proc selfupdate::main {{options {}} {updatestatusvar {}}} {
     ui_msg "MacPorts base version $macports_version installed,"
     ui_msg "MacPorts base version $macports_version_new available."
 
+    # Update MacPorts from Git
+    set basedir "/Users/saagarjha/.dotfiles/macports-base"
+    macports::VCSPrepare $basedir statevar
+    set repoInfo [macports::GetVCSUpdateCmd $basedir]
+
     # check if we we need to rebuild base
     set comp [vercmp $macports_version_new $macports_version]
     if {[dict exists $options ports_force] && [dict get $options ports_force]} {
@@ -578,6 +583,18 @@ proc selfupdate::main {{options {}} {updatestatusvar {}}} {
         set use_the_force_luke no
         ui_debug "Rebuilding and reinstalling MacPorts if needed"
     }
+
+    lassign $repoInfo vcs cmd dir
+    set branch [exec git -C $dir branch --show-current]
+    set upstream [exec git -C $dir rev-parse --abbrev-ref --symbolic-full-name @{u}]
+    set mergebase [exec git -C $dir merge-base $branch $upstream]
+    macports::UpdateVCS $cmd $dir
+    if {[exec git -C $dir rev-parse $mergebase] != [exec git -C $dir rev-parse $upstream]} {
+        set source_code $dir
+        set use_the_force_luke yes
+        set rsync_fetched 1
+    }
+    macports::VCSCleanup statevar
 
     # pre-syncing ports tree if needed (batch, shell modes)
     if {$comp > 0 && [dict exists $options ports_selfupdate_presync] && [dict get $options ports_selfupdate_presync]} {
